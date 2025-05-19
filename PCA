@@ -1,0 +1,104 @@
+# PCA implementation from scratch using only built-in Python functions
+
+# Step 1: Load the dataset
+import csv
+
+file_path = "Iris.csv"  # Change path if needed
+
+with open(file_path, "r") as file:
+    reader = csv.reader(file)
+    data = list(reader)
+
+header = data[0]
+rows = data[1:]
+
+# Step 2: Extract only numerical features (columns 1 to 4)
+features = []
+for row in rows:
+    features.append([float(row[1]), float(row[2]), float(row[3]), float(row[4])])
+
+# Step 3: Mean centering
+def mean_center(data):
+    n = len(data)
+    d = len(data[0])
+    mean = [0.0] * d
+    for i in range(n):
+        for j in range(d):
+            mean[j] += data[i][j]
+    for j in range(d):
+        mean[j] /= n
+    centered = []
+    for i in range(n):
+        centered.append([data[i][j] - mean[j] for j in range(d)])
+    return centered, mean
+
+centered_data, mean_vector = mean_center(features)
+
+# Step 4: Compute covariance matrix
+def compute_covariance_matrix(data):
+    n = len(data)
+    d = len(data[0])
+    cov_matrix = [[0.0 for _ in range(d)] for _ in range(d)]
+    for i in range(d):
+        for j in range(d):
+            for k in range(n):
+                cov_matrix[i][j] += data[k][i] * data[k][j]
+            cov_matrix[i][j] /= (n - 1)
+    return cov_matrix
+
+cov_matrix = compute_covariance_matrix(centered_data)
+
+# Step 5: Eigenvalue and eigenvector using power iteration
+def dot(v1, v2):
+    return sum(x * y for x, y in zip(v1, v2))
+
+def mat_vec_mult(mat, vec):
+    return [sum(mat[i][j] * vec[j] for j in range(len(vec))) for i in range(len(mat))]
+
+def norm(vec):
+    return sum(x * x for x in vec) ** 0.5
+
+def normalize(vec):
+    n = norm(vec)
+    return [x / n for x in vec]
+
+def power_iteration(mat, num_iter=1000):
+    b_k = [1.0 for _ in range(len(mat))]
+    for _ in range(num_iter):
+        b_k1 = mat_vec_mult(mat, b_k)
+        b_k = normalize(b_k1)
+    eigenvalue = dot(b_k, mat_vec_mult(mat, b_k)) / dot(b_k, b_k)
+    return eigenvalue, b_k
+
+def deflate_matrix(mat, eigenvalue, eigenvector):
+    d = len(mat)
+    for i in range(d):
+        for j in range(d):
+            mat[i][j] -= eigenvalue * eigenvector[i] * eigenvector[j]
+    return mat
+
+# Step 6: Get top 2 eigenvectors (principal components)
+eigvals = []
+eigvecs = []
+cov_copy = [row[:] for row in cov_matrix]
+
+for _ in range(2):
+    val, vec = power_iteration(cov_copy)
+    eigvals.append(val)
+    eigvecs.append(vec)
+    cov_copy = deflate_matrix(cov_copy, val, vec)
+
+# Step 7: Project data
+def project_data(data, components):
+    projected = []
+    for row in data:
+        proj = [dot(row, comp) for comp in components]
+        projected.append(proj)
+    return projected
+
+projected_data = project_data(centered_data, eigvecs)
+
+# Step 8: Print first 5 projected 2D data points
+print("First 5 projected data points (PCA 2D):")
+for point in projected_data[:5]:
+    print([round(x, 4) for x in point])
