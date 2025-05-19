@@ -1,0 +1,54 @@
+import numpy as np
+import pandas as pd
+from sklearn.metrics import silhouette_score
+
+# K-Means Clustering Implementation
+def kmeans(X, n_clusters, max_iters=300, tol=1e-4):
+    n_samples, n_features = X.shape
+
+    # Randomly initialize cluster centers
+    rng = np.random.default_rng(seed=42)
+    centroids = X[rng.choice(n_samples, n_clusters, replace=False)]
+
+    for _ in range(max_iters):
+        # Assign samples to nearest centroid
+        distances = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
+        cluster_assignments = np.argmin(distances, axis=1)
+
+        # Calculate new centroids
+        new_centroids = np.array([X[cluster_assignments == k].mean(axis=0) for k in range(n_clusters)])
+
+        # Check for convergence
+        if np.linalg.norm(new_centroids - centroids) < tol:
+            break
+
+        centroids = new_centroids
+
+    return centroids, cluster_assignments
+
+# Load dataset
+iris = pd.read_csv('/Iris.csv')
+
+# Prepare features
+X = iris[['SepalLengthCm', 'SepalWidthCm', 'PetalLengthCm', 'PetalWidthCm']].values
+
+# Number of clusters
+n_clusters = 3
+
+# Apply K-Means
+centroids, cluster_assignments = kmeans(X, n_clusters)
+
+# Evaluate clustering using silhouette score
+silhouette_avg = silhouette_score(X, cluster_assignments)
+
+# Print results
+print("Centroids:")
+print(centroids)
+print("\nCluster Assignments:")
+print(cluster_assignments)
+print("\nSilhouette Score:", silhouette_avg)
+
+# Add cluster assignments to the original dataset
+iris['Cluster'] = cluster_assignments
+print("\nDataset with Clusters:")
+print(iris.head())
