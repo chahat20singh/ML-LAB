@@ -1,0 +1,68 @@
+# Multiple Linear Regression from Scratch with Categorical Handling
+
+def load_csv(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        headers = lines[0].strip().split(',')
+        data = []
+        for line in lines[1:]:
+            values = line.strip().split(',')
+            row = []
+            for value in values:
+                # Convert categorical Yes/No to 1/0
+                if value.lower() == 'yes':
+                    row.append(1.0)
+                elif value.lower() == 'no':
+                    row.append(0.0)
+                else:
+                    row.append(float(value))
+            data.append(row)
+    return headers, data
+
+def mean(values):
+    return sum(values) / len(values)
+
+def variance(values, mean_val):
+    return sum((x - mean_val) ** 2 for x in values)
+
+def covariance(x, x_mean, y, y_mean):
+    return sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(len(x)))
+
+def coefficients(dataset):
+    X = [row[:-1] for row in dataset]
+    Y = [row[-1] for row in dataset]
+    means = [mean(col) for col in zip(*X)]
+    y_mean = mean(Y)
+    coeffs = []
+    for i in range(len(X[0])):
+        cov = covariance([row[i] for row in X], means[i], Y, y_mean)
+        var = variance([row[i] for row in X], means[i])
+        coeffs.append(cov / var if var != 0 else 0)
+    intercept = y_mean - sum(coeffs[i] * means[i] for i in range(len(coeffs)))
+    return intercept, coeffs
+
+def predict(row, intercept, coeffs):
+    return intercept + sum(coeffs[i] * row[i] for i in range(len(coeffs)))
+
+def mean_squared_error(actual, predicted):
+    return sum((actual[i] - predicted[i]) ** 2 for i in range(len(actual))) / len(actual)
+
+# MAIN
+if __name__ == "__main__":
+    headers, data = load_csv("/content/Student_Performance.csv")
+
+    intercept, coeffs = coefficients(data)
+
+    print("Intercept:", intercept)
+    print("Coefficients:")
+    for i in range(len(coeffs)):
+        print(f"{headers[i]}: {coeffs[i]}")
+
+    predictions = [predict(row[:-1], intercept, coeffs) for row in data]
+    actual = [row[-1] for row in data]
+
+    mse = mean_squared_error(actual, predictions)
+    print("Mean Squared Error:", mse)
+
+    for i in range(len(data)):
+        print(f"Actual: {actual[i]}, Predicted: {predictions[i]:.2f}")
