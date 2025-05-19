@@ -1,0 +1,63 @@
+#linear regression
+import csv
+
+# Load data from CSV
+def load_data(filename):
+    X = []
+    Y = []
+    with open(filename, 'r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            X.append(float(row['YearsExperience']))
+            Y.append(float(row['Salary']))
+    return X, Y
+
+# Mean
+def mean(values):
+    return sum(values) / len(values)
+
+# Variance
+def variance(values, mean_val):
+    return sum((x - mean_val) ** 2 for x in values)
+
+# Covariance
+def covariance(X, mean_x, Y, mean_y):
+    return sum((X[i] - mean_x) * (Y[i] - mean_y) for i in range(len(X)))
+
+# Coefficients (slope and intercept)
+def coefficients(X, Y):
+    mean_x = mean(X)
+    mean_y = mean(Y)
+    covar = covariance(X, mean_x, Y, mean_y)
+    var_x = variance(X, mean_x)
+    m = covar / var_x
+    b = mean_y - m * mean_x
+    return m, b
+
+# Predict
+def predict(X, m, b):
+    return [m * x + b for x in X]
+
+# Mean Squared Error
+def mean_squared_error(actual, predicted):
+    return sum((a - p) ** 2 for a, p in zip(actual, predicted)) / len(actual)
+
+# --- MAIN EXECUTION ---
+
+# Load data
+X, Y = load_data("/content/Salary_Data.csv")
+
+# Train model
+m, b = coefficients(X, Y)
+print(f"Learned model: Salary = {m:.2f} * YearsExperience + {b:.2f}")
+
+# Make predictions
+predictions = predict(X, m, b)
+
+# Evaluate
+mse = mean_squared_error(Y, predictions)
+print(f"Mean Squared Error: {mse:.2f}")
+
+# Display predictions
+for i in range(len(X)):
+    print(f"Years: {X[i]}, Actual Salary: {Y[i]}, Predicted: {predictions[i]:.2f}")
