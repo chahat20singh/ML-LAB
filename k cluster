@@ -1,0 +1,103 @@
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
+
+# Function to calculate weighted accuracy
+def calculate_weighted_error(y_true, y_pred, weights):
+    return np.sum(weights * (y_true != y_pred)) / np.sum(weights)
+
+# Function to update weights
+def update_weights(weights, alpha, y_true, y_pred):
+    return weights * np.exp(alpha * (y_true != y_pred).astype(float))
+
+# AdaBoost implementation
+def adaboost(X, y, n_estimators):
+    n_samples, n_features = X.shape
+    weights = np.ones(n_samples) / n_samples
+    estimators = []
+    alphas = []
+
+    for _ in range(n_estimators):
+        # Train a weak learner (Decision Stump)
+        best_feature, best_threshold, best_polarity, best_error = None, None, None, float('inf')
+
+        for feature in range(n_features):
+            thresholds = np.unique(X[:, feature])
+
+            for threshold in thresholds:
+                for polarity in [1, -1]:
+                    y_pred = np.ones(n_samples)
+                    y_pred[polarity * X[:, feature] < polarity * threshold] = -1
+
+                    error = calculate_weighted_error(y, y_pred, weights)
+
+                    if error < best_error:
+                        best_feature = feature
+                        best_threshold = threshold
+                        best_polarity = polarity
+                        best_error = error
+
+        # Calculate alpha (model weight)
+        alpha = 0.5 * np.log((1 - best_error) / (best_error + 1e-10))
+
+        # Update weights
+        y_pred = np.ones(n_samples)
+        y_pred[best_polarity * X[:, best_feature] < best_polarity * best_threshold] = -1
+        weights = update_weights(weights, alpha, y, y_pred)
+
+        estimators.append((best_feature, best_threshold, best_polarity))
+        alphas.append(alpha)
+
+    return estimators, alphas
+
+# Prediction function
+def predict(X, estimators, alphas):
+    n_samples = X.shape[0]
+    final_prediction = np.zeros(n_samples)
+
+    for (feature, threshold, polarity), alpha in zip(estimators, alphas):
+        prediction = np.ones(n_samples)
+        prediction[polarity * X[:, feature] < polarity * threshold] = -1
+        final_prediction += alpha * prediction
+
+    return np.sign(final_prediction)
+
+# Load dataset
+iris = pd.read_csv('/Iris.csv')
+
+# Prepare features and target
+X = iris[['SepalLengthCm', 'SepalWidthCm', 'PetalLengthCm', 'PetalWidthCm']].values
+y = iris['Species']
+
+# Convert target to numerical labels
+from sklearn.preprocessing import LabelEncoder
+le = LabelEncoder()
+y = le.fit_transform(y)
+y = np.where(y == 0, -1, 1)  # Convert labels to -1 and 1
+
+# Train-test split
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Train AdaBoost
+n_estimators = 50
+estimators, alphas = adaboost(X_train, y_train, n_estimators)
+
+# Make predictions
+y_pred = predict(X_test, estimators, alphas)
+
+# Evaluate
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, average='weighted')
+recall = recall_score(y_test, y_pred, average='weighted')
+f1 = f1_score(y_test, y_pred, average='weighted')
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+print("AdaBoost Model Accuracy:", accuracy)
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1 Score:", f1)
+print("Confusion Matrix:\n", conf_matrix)
+print("Classification Report:\n", classification_report(y_test, y_pred))
+     
